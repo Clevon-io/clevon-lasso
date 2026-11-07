@@ -24,8 +24,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check-types": "tsc --noEmit",
-    "prepare": "node scripts/build.mjs"
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

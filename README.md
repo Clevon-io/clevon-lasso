@@ -74,7 +74,7 @@ pnpm build        # 패키지 빌드 + 플러그인 스킬 폴더(bin/)에 결�
 pnpm check-types
 ```
 
-플러그인은 빌드 없이 돌아야 하므로 `plugins/lasso/skills/lasso/bin/` 의 빌드 결과를 함께 커밋한다. 소스를 고쳤으면 `pnpm build` 뒤에 커밋한다.
+플러그인과 git 의존성 설치는 빌드 없이 돌아야 하므로 빌드 결과(`packages/lasso/dist/`, `plugins/lasso/skills/lasso/bin/`)를 함께 커밋한다. 소스를 고쳤으면 `pnpm build` 뒤에 커밋한다.
 
 | 경로 | 내용 |
 | --- | --- |
