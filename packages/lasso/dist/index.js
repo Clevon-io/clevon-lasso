@@ -1266,6 +1266,21 @@ function LassoApp({ send }) {
     setSending(false);
     if (ok) feedback.clear();
   }, [feedback, sending, send]);
+  const canSendByEnter = inspector.tool === "feedback" && !inspector.browsing && !feedback.draft && feedback.items.length > 0;
+  useEffect3(() => {
+    if (!canSendByEnter) return;
+    const onKeyDown = (e) => {
+      if (e.key !== "Enter" || e.isComposing || e.defaultPrevented || e.repeat) return;
+      if (e.shiftKey || e.altKey || e.metaKey || e.ctrlKey) return;
+      const target = e.target;
+      if (target instanceof Element && target.closest('input, textarea, select, button, a, [contenteditable]:not([contenteditable="false"])'))
+        return;
+      e.preventDefault();
+      void handleSendFeedback();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canSendByEnter, handleSendFeedback]);
   return /* @__PURE__ */ jsx4(MotionConfig, { reducedMotion: "user", children: /* @__PURE__ */ jsxs4("div", { ...{ [UI_ATTR]: "" }, className: "lasso-root", children: [
     /* @__PURE__ */ jsx4(
       FeedbackOverlay,

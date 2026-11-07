@@ -1,7 +1,7 @@
 {
   "name": "lasso",
   "description": "개발 서버 화면에 피드백 도구를 얹고, 보낸 피드백을 이 세션이 받아 바로 고친다.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": { "name": "Clevon" },
   "homepage": "https://github.com/Clevon-io/clevon-lasso",
   "repository": "https://github.com/Clevon-io/clevon-lasso"

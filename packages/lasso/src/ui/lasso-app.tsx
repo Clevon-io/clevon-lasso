@@ -48,6 +48,27 @@ export function LassoApp({ send }: { send: (payload: LassoPayload) => Promise<bo
     if (ok) feedback.clear()
   }, [feedback, sending, send])
 
+  // 코멘트 입력창이 닫힌 상태에서 Enter 를 한 번 더 누르면 모인 피드백을 보낸다
+  const canSendByEnter =
+    inspector.tool === 'feedback' && !inspector.browsing && !feedback.draft && feedback.items.length > 0
+  useEffect(() => {
+    if (!canSendByEnter) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || e.isComposing || e.defaultPrevented || e.repeat) return
+      if (e.shiftKey || e.altKey || e.metaKey || e.ctrlKey) return
+      const target = e.target
+      if (
+        target instanceof Element &&
+        target.closest('input, textarea, select, button, a, [contenteditable]:not([contenteditable="false"])')
+      )
+        return
+      e.preventDefault()
+      void handleSendFeedback()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [canSendByEnter, handleSendFeedback])
+
   return (
     <MotionConfig reducedMotion="user">
       <div {...{ [UI_ATTR]: '' }} className="lasso-root">
