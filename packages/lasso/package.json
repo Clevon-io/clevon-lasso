@@ -1,0 +1,46 @@
+{
+  "name": "@clevon/lasso",
+  "version": "0.1.0",
+  "description": "보고 있는 웹 화면에 바로 시각 피드백을 남기는 도구. 브라우저 도구·수신 서버·중계 CLI.",
+  "type": "module",
+  "license": "UNLICENSED",
+  "repository": "github:Clevon-io/clevon-lasso",
+  "bin": {
+    "lasso": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/types/server/index.d.ts",
+      "default": "./dist/server.js"
+    },
+    "./client.js": "./dist/client.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check-types": "tsc --noEmit",
+    "prepare": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@phosphor-icons/react": "^2.1.10",
+    "framer-motion": "^12.38.0",
+    "html-to-image": "^1.11.13",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "esbuild": "^0.25.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.8.0"
+  }
+}

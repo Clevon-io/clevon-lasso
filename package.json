@@ -1,0 +1,15 @@
+{
+  "name": "clevon-lasso",
+  "private": true,
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "build": "pnpm --filter @clevon/lasso build && node scripts/sync-plugin.mjs",
+    "check-types": "pnpm --filter @clevon/lasso check-types"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@tailwindcss/oxide"
+    ]
+  }
+}
