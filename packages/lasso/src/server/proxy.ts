@@ -69,6 +69,8 @@ export function startProxy(options: ProxyOptions) {
           upstream.pipe(res)
           return
         }
+        const dest = req.headers['sec-fetch-dest']
+        if (!dest || dest === 'document') void options.inbox.touch().catch(() => {})
         delete out['content-length']
         delete out['content-security-policy']
         res.writeHead(upstream.statusCode ?? 502, out)

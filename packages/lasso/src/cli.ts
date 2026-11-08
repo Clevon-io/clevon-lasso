@@ -12,6 +12,8 @@ const HELP = `Clevon Lasso — 보고 있는 화면에 바로 피드백을 남�
   lasso <포트>            개발 서버(<포트>) 앞에 피드백 도구를 얹은 중계 서버를 연다 (기본 <포트>+100)
     --listen <포트>       중계 서버 포트를 직접 정한다
   lasso watch             아직 안 넘긴 피드백부터 한 건씩 출력하고 새 피드백을 기다린다
+  lasso idle              마지막 활동(화면 열기·피드백) 뒤 몇 분 지났는지 출력한다
+  lasso wait              사용자가 돌아올 때(화면을 열거나 피드백을 보낼 때)까지 기다렸다 끝난다
   lasso path              이 프로젝트의 수신함 폴더를 출력한다
 
 공통
@@ -39,11 +41,27 @@ async function watch() {
   setInterval(() => void tick().catch((error) => console.error(error)), 700)
 }
 
+async function idle() {
+  const last = await inbox.lastActivity()
+  console.log(last === null ? 0 : Math.floor((Date.now() - last) / 60_000))
+}
+
+async function wait() {
+  const since = Date.now()
+  for (;;) {
+    if (await inbox.hasUnread()) return void console.log('사용자가 돌아옴: 새 피드백이 있다')
+    const last = await inbox.lastActivity()
+    if (last !== null && last > since) return void console.log('사용자가 돌아옴: 화면을 열었다')
+    await new Promise((r) => setTimeout(r, 1000))
+  }
+}
+
 async function proxy(target: number) {
   const listen = values.listen ? Number(values.listen) : target + 100
   const here = path.dirname(fileURLToPath(import.meta.url))
   const clientJs = () => readFileSync(path.join(here, 'client.js'), 'utf8')
   await startProxy({ target, listen, inbox, clientJs })
+  await inbox.touch()
   console.log(`Lasso 중계 서버: http://localhost:${listen}  (원래 서버 http://localhost:${target})`)
   console.log(`수신함: ${inbox.dir}`)
 }
@@ -52,6 +70,10 @@ if (values.help || !command || command === 'help') {
   console.log(HELP)
 } else if (command === 'path') {
   console.log(inbox.dir)
+} else if (command === 'idle') {
+  await idle()
+} else if (command === 'wait') {
+  await wait()
 } else if (command === 'watch') {
   await watch()
 } else if (/^\d+$/.test(command)) {

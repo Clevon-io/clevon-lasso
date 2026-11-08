@@ -21,6 +21,9 @@ export declare function createInbox(dir: string): {
     append: (payload: Partial<LassoPayload>) => Promise<InboxEntry>;
     readAll: () => InboxEntry[];
     takeUnread: () => Promise<InboxEntry[]>;
+    hasUnread: () => Promise<boolean>;
+    touch: () => Promise<void>;
+    lastActivity: () => Promise<number | null>;
 };
 export type Inbox = ReturnType<typeof createInbox>;
 /** Node http 서버에 붙이는 수신 처리. 처리했으면 true. */

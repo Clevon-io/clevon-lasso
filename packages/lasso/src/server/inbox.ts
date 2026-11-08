@@ -31,6 +31,7 @@ export function createInbox(dir: string) {
   const file = path.join(dir, 'inbox.jsonl')
   const imagesDir = path.join(dir, 'images')
   const cursorFile = path.join(dir, 'cursor')
+  const activeFile = path.join(dir, 'active')
 
   async function append(payload: Partial<LassoPayload>): Promise<InboxEntry> {
     if (typeof payload.message !== 'string' || !payload.message.trim()) throw new Error('message required')
@@ -81,7 +82,26 @@ export function createInbox(dir: string) {
     return all.slice(cursor)
   }
 
-  return { dir, file, append, readAll, takeUnread }
+  async function hasUnread() {
+    return readAll().length > (await readCursor())
+  }
+
+  /** 사용자가 화면을 열었거나 중계 서버가 막 켜졌을 때 남긴다. */
+  async function touch() {
+    await mkdir(dir, { recursive: true })
+    await writeFile(activeFile, new Date().toISOString())
+  }
+
+  /** 마지막 활동 시각(ms). 화면 열기·피드백 중 늦은 쪽. 기록이 없으면 null. */
+  async function lastActivity(): Promise<number | null> {
+    const touched = Date.parse(await readFile(activeFile, 'utf8').catch(() => ''))
+    const last = readAll().at(-1)
+    const fed = last ? Date.parse(last.at) : Number.NaN
+    const times = [touched, fed].filter((t) => !Number.isNaN(t))
+    return times.length ? Math.max(...times) : null
+  }
+
+  return { dir, file, append, readAll, takeUnread, hasUnread, touch, lastActivity }
 }
 
 export type Inbox = ReturnType<typeof createInbox>

@@ -14,6 +14,7 @@ function createInbox(dir) {
   const file = path.join(dir, "inbox.jsonl");
   const imagesDir = path.join(dir, "images");
   const cursorFile = path.join(dir, "cursor");
+  const activeFile = path.join(dir, "active");
   async function append(payload) {
     if (typeof payload.message !== "string" || !payload.message.trim()) throw new Error("message required");
     const id = `fb-${Date.now().toString(36)}`;
@@ -56,7 +57,21 @@ function createInbox(dir) {
     await writeFile(cursorFile, String(all.length));
     return all.slice(cursor);
   }
-  return { dir, file, append, readAll, takeUnread };
+  async function hasUnread() {
+    return readAll().length > await readCursor();
+  }
+  async function touch() {
+    await mkdir(dir, { recursive: true });
+    await writeFile(activeFile, (/* @__PURE__ */ new Date()).toISOString());
+  }
+  async function lastActivity() {
+    const touched = Date.parse(await readFile(activeFile, "utf8").catch(() => ""));
+    const last = readAll().at(-1);
+    const fed = last ? Date.parse(last.at) : Number.NaN;
+    const times = [touched, fed].filter((t) => !Number.isNaN(t));
+    return times.length ? Math.max(...times) : null;
+  }
+  return { dir, file, append, readAll, takeUnread, hasUnread, touch, lastActivity };
 }
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -163,6 +178,9 @@ function startProxy(options) {
           upstream.pipe(res);
           return;
         }
+        const dest = req.headers["sec-fetch-dest"];
+        if (!dest || dest === "document") void options.inbox.touch().catch(() => {
+        });
         delete out["content-length"];
         delete out["content-security-policy"];
         res.writeHead(upstream.statusCode ?? 502, out);

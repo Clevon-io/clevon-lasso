@@ -82,5 +82,5 @@ pnpm check-types
 | `packages/lasso/src/ui`, `hooks` | 피드백 UI (Lander 와 같은 화면) |
 | `packages/lasso/src/index.tsx` | `mountLasso` — Shadow DOM 에 UI 를 붙인다 |
 | `packages/lasso/src/server` | 수신함, 중계 서버(HTML 에 도구 스크립트 주입, WebSocket 통과) |
-| `packages/lasso/src/cli.ts` | `lasso <포트>`, `lasso watch`, `lasso path` |
+| `packages/lasso/src/cli.ts` | `lasso <포트>`, `lasso watch`, `lasso idle`, `lasso wait`, `lasso path` |
 | `plugins/lasso` | Claude Code 플러그인 |

@@ -22,6 +22,7 @@ function createInbox(dir) {
   const file = path.join(dir, "inbox.jsonl");
   const imagesDir = path.join(dir, "images");
   const cursorFile = path.join(dir, "cursor");
+  const activeFile = path.join(dir, "active");
   async function append(payload) {
     if (typeof payload.message !== "string" || !payload.message.trim()) throw new Error("message required");
     const id = `fb-${Date.now().toString(36)}`;
@@ -64,7 +65,21 @@ function createInbox(dir) {
     await writeFile(cursorFile, String(all.length));
     return all.slice(cursor);
   }
-  return { dir, file, append, readAll, takeUnread };
+  async function hasUnread() {
+    return readAll().length > await readCursor();
+  }
+  async function touch() {
+    await mkdir(dir, { recursive: true });
+    await writeFile(activeFile, (/* @__PURE__ */ new Date()).toISOString());
+  }
+  async function lastActivity() {
+    const touched = Date.parse(await readFile(activeFile, "utf8").catch(() => ""));
+    const last = readAll().at(-1);
+    const fed = last ? Date.parse(last.at) : Number.NaN;
+    const times = [touched, fed].filter((t) => !Number.isNaN(t));
+    return times.length ? Math.max(...times) : null;
+  }
+  return { dir, file, append, readAll, takeUnread, hasUnread, touch, lastActivity };
 }
 function cors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -171,6 +186,9 @@ function startProxy(options) {
           upstream.pipe(res);
           return;
         }
+        const dest = req.headers["sec-fetch-dest"];
+        if (!dest || dest === "document") void options.inbox.touch().catch(() => {
+        });
         delete out["content-length"];
         delete out["content-security-policy"];
         res.writeHead(upstream.statusCode ?? 502, out);
@@ -216,6 +234,8 @@ var HELP = `Clevon Lasso \u2014 \uBCF4\uACE0 \uC788\uB294 \uD654\uBA74\uC5D0 \uB
   lasso <\uD3EC\uD2B8>            \uAC1C\uBC1C \uC11C\uBC84(<\uD3EC\uD2B8>) \uC55E\uC5D0 \uD53C\uB4DC\uBC31 \uB3C4\uAD6C\uB97C \uC5B9\uC740 \uC911\uACC4 \uC11C\uBC84\uB97C \uC5F0\uB2E4 (\uAE30\uBCF8 <\uD3EC\uD2B8>+100)
     --listen <\uD3EC\uD2B8>       \uC911\uACC4 \uC11C\uBC84 \uD3EC\uD2B8\uB97C \uC9C1\uC811 \uC815\uD55C\uB2E4
   lasso watch             \uC544\uC9C1 \uC548 \uB118\uAE34 \uD53C\uB4DC\uBC31\uBD80\uD130 \uD55C \uAC74\uC529 \uCD9C\uB825\uD558\uACE0 \uC0C8 \uD53C\uB4DC\uBC31\uC744 \uAE30\uB2E4\uB9B0\uB2E4
+  lasso idle              \uB9C8\uC9C0\uB9C9 \uD65C\uB3D9(\uD654\uBA74 \uC5F4\uAE30\xB7\uD53C\uB4DC\uBC31) \uB4A4 \uBA87 \uBD84 \uC9C0\uB0AC\uB294\uC9C0 \uCD9C\uB825\uD55C\uB2E4
+  lasso wait              \uC0AC\uC6A9\uC790\uAC00 \uB3CC\uC544\uC62C \uB54C(\uD654\uBA74\uC744 \uC5F4\uAC70\uB098 \uD53C\uB4DC\uBC31\uC744 \uBCF4\uB0BC \uB54C)\uAE4C\uC9C0 \uAE30\uB2E4\uB838\uB2E4 \uB05D\uB09C\uB2E4
   lasso path              \uC774 \uD504\uB85C\uC81D\uD2B8\uC758 \uC218\uC2E0\uD568 \uD3F4\uB354\uB97C \uCD9C\uB825\uD55C\uB2E4
 
 \uACF5\uD1B5
@@ -240,11 +260,25 @@ async function watch() {
   await tick();
   setInterval(() => void tick().catch((error) => console.error(error)), 700);
 }
+async function idle() {
+  const last = await inbox.lastActivity();
+  console.log(last === null ? 0 : Math.floor((Date.now() - last) / 6e4));
+}
+async function wait() {
+  const since = Date.now();
+  for (; ; ) {
+    if (await inbox.hasUnread()) return void console.log("\uC0AC\uC6A9\uC790\uAC00 \uB3CC\uC544\uC634: \uC0C8 \uD53C\uB4DC\uBC31\uC774 \uC788\uB2E4");
+    const last = await inbox.lastActivity();
+    if (last !== null && last > since) return void console.log("\uC0AC\uC6A9\uC790\uAC00 \uB3CC\uC544\uC634: \uD654\uBA74\uC744 \uC5F4\uC5C8\uB2E4");
+    await new Promise((r) => setTimeout(r, 1e3));
+  }
+}
 async function proxy(target) {
   const listen = values.listen ? Number(values.listen) : target + 100;
   const here = path2.dirname(fileURLToPath(import.meta.url));
   const clientJs = () => readFileSync2(path2.join(here, "client.js"), "utf8");
   await startProxy({ target, listen, inbox, clientJs });
+  await inbox.touch();
   console.log(`Lasso \uC911\uACC4 \uC11C\uBC84: http://localhost:${listen}  (\uC6D0\uB798 \uC11C\uBC84 http://localhost:${target})`);
   console.log(`\uC218\uC2E0\uD568: ${inbox.dir}`);
 }
@@ -252,6 +286,10 @@ if (values.help || !command || command === "help") {
   console.log(HELP);
 } else if (command === "path") {
   console.log(inbox.dir);
+} else if (command === "idle") {
+  await idle();
+} else if (command === "wait") {
+  await wait();
 } else if (command === "watch") {
   await watch();
 } else if (/^\d+$/.test(command)) {

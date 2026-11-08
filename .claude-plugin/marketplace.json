@@ -7,7 +7,7 @@
     {
       "name": "lasso",
       "description": "개발 서버 화면에 피드백 도구를 얹고, 보낸 피드백을 이 세션이 받아 바로 고친다. 프로젝트에는 아무것도 설치하지 않는다.",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "source": "./plugins/lasso",
       "category": "development",
       "author": { "name": "Clevon" },
