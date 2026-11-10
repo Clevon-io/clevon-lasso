@@ -3,6 +3,7 @@
   "description": "개발 서버 화면에 피드백 도구를 얹고, 보낸 피드백을 이 세션이 받아 바로 고친다. Claude Code·Codex·OpenCode 지원.",
   "version": "0.2.0",
   "author": { "name": "Clevon" },
+  "license": "MIT",
   "homepage": "https://github.com/Clevon-io/clevon-lasso",
   "repository": "https://github.com/Clevon-io/clevon-lasso"
 }

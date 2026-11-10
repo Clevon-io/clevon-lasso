@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "보고 있는 웹 화면에 바로 시각 피드백을 남기는 도구. 브라우저 도구·수신 서버·중계 CLI.",
   "type": "module",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "repository": "github:Clevon-io/clevon-lasso",
   "bin": {
     "lasso": "./dist/cli.js"

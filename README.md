@@ -114,3 +114,7 @@ pnpm check-types
 | `packages/lasso/src/server` | 수신함, 중계 서버(HTML 에 도구 스크립트 주입, WebSocket 통과) |
 | `packages/lasso/src/cli.ts` | `lasso <포트>`, `start`·`stop`, `watch`, `next`, `idle`, `wait`, `path` |
 | `plugins/lasso` | 플러그인·스킬 (Claude Code·Codex 마켓플레이스, OpenCode 는 스킬 폴더 연결) |
+
+## 라이선스
+
+MIT
