@@ -79,6 +79,8 @@ export function LassoApp({ send }: { send: (payload: LassoPayload) => Promise<bo
           browsing={inspector.browsing}
           onSaveDraft={feedback.saveDraft}
           onCancelDraft={feedback.cancelDraft}
+          draftText={feedback.draftText}
+          onDraftTextChange={feedback.setDraftText}
         />
 
         <div className="pointer-events-none fixed inset-0 z-[2147483641] flex flex-col items-center justify-end px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">

@@ -1,13 +1,13 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "clevon-lasso",
-  "description": "Clevon Lasso — 보고 있는 웹 화면에 피드백을 남기면 Claude Code 세션이 바로 받아 고친다.",
+  "description": "Clevon Lasso — 보고 있는 웹 화면에 피드백을 남기면 코딩 에이전트(Claude Code·Codex·OpenCode) 세션이 바로 받아 고친다.",
   "owner": { "name": "Clevon" },
   "plugins": [
     {
       "name": "lasso",
       "description": "개발 서버 화면에 피드백 도구를 얹고, 보낸 피드백을 이 세션이 받아 바로 고친다. 프로젝트에는 아무것도 설치하지 않는다.",
-      "version": "0.1.2",
+      "version": "0.2.0",
       "source": "./plugins/lasso",
       "category": "development",
       "author": { "name": "Clevon" },

@@ -8,6 +8,7 @@ import type {
   TrackedNode,
 } from '../core/inspector-protocol'
 import { DRAFT_KEY, MarkerStore, type Placement } from '../core/marker-store'
+import * as pending from '../core/pending-store'
 
 interface Offset {
   dx: number
@@ -56,9 +57,17 @@ function place(
 
 /** 피드백 버블 수집 상태 — 클릭 지점 선택 → 코멘트 초안 → 항목 축적 → 직렬화 */
 export function useFeedback(inspector: InspectorApi) {
-  const [items, setItems] = useState<FeedbackItem[]>([])
-  const [draft, setDraft] = useState<FeedbackDraft | null>(null)
-  const [markers] = useState(() => new MarkerStore())
+  const [restored] = useState(() => ({ items: pending.loadItems(), draft: pending.loadDraft() }))
+  const [items, setItems] = useState<FeedbackItem[]>(restored.items)
+  const [draft, setDraft] = useState<FeedbackDraft | null>(restored.draft?.draft ?? null)
+  const [markers] = useState(() => {
+    const store = new MarkerStore()
+    for (const item of restored.items) store.write(item.id, { pin: item.pin, rect: item.rect })
+    const saved = restored.draft?.draft
+    if (saved) store.write(DRAFT_KEY, { pin: saved.point, rect: saved.rect })
+    return store
+  })
+  const draftTextRef = useRef(restored.draft?.text ?? '')
 
   // 좌표 갱신 콜백은 프레임마다 불리므로 상태를 deps로 걸지 않는다 — 콜백 참조가 매번 바뀌면
   // FeedbackOverlay와 track effect가 덩달아 재실행된다
@@ -68,6 +77,15 @@ export function useFeedback(inspector: InspectorApi) {
   draftRef.current = draft
 
   const { connected, track, capture } = inspector
+
+  useEffect(() => pending.saveItems(items), [items])
+  useEffect(() => pending.saveDraft(draft ? { draft, text: draftTextRef.current } : null), [draft])
+
+  const setDraftText = useCallback((text: string) => {
+    draftTextRef.current = text
+    const current = draftRef.current
+    if (current) pending.saveDraft({ draft: current, text })
+  }, [])
 
   const trackedNodes = useMemo(() => {
     const nodes = new Map<number, string>()
@@ -94,6 +112,7 @@ export function useFeedback(inspector: InspectorApi) {
     (meta: ElementMeta, point?: Point) => {
       const p = point ?? { x: meta.rect.x + meta.rect.width, y: meta.rect.y }
       markers.write(DRAFT_KEY, { pin: p, rect: null })
+      draftTextRef.current = ''
       setDraft({
         target: { kind: 'element', meta },
         point: p,
@@ -116,6 +135,7 @@ export function useFeedback(inspector: InspectorApi) {
       const point = region.point ?? { x: region.rect.x + region.rect.width, y: region.rect.y }
       const anchor = trackingAnchor(target)
       markers.write(DRAFT_KEY, { pin: point, rect: region.rect })
+      draftTextRef.current = ''
       setDraft({
         target,
         point,
@@ -254,6 +274,8 @@ export function useFeedback(inspector: InspectorApi) {
   return {
     items,
     draft,
+    draftText: draftTextRef.current,
+    setDraftText,
     markers,
     beginElementDraft,
     beginRegionDraft,

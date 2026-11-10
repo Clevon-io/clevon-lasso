@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 // src/cli.ts
-import { readFileSync as readFileSync2 } from "node:fs";
+import { spawn } from "node:child_process";
+import { mkdirSync, openSync, readFileSync as readFileSync2, rmSync, writeFileSync } from "node:fs";
 import path2 from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -228,12 +229,16 @@ ${error.message}`);
 }
 
 // src/cli.ts
-var HELP = `Clevon Lasso \u2014 \uBCF4\uACE0 \uC788\uB294 \uD654\uBA74\uC5D0 \uBC14\uB85C \uD53C\uB4DC\uBC31\uC744 \uB0A8\uAE30\uACE0 Claude Code \uC138\uC158\uC774 \uBC1B\uC544 \uACE0\uCE5C\uB2E4.
+var HELP = `Clevon Lasso \u2014 \uBCF4\uACE0 \uC788\uB294 \uD654\uBA74\uC5D0 \uBC14\uB85C \uD53C\uB4DC\uBC31\uC744 \uB0A8\uAE30\uACE0 \uCF54\uB529 \uC5D0\uC774\uC804\uD2B8 \uC138\uC158\uC774 \uBC1B\uC544 \uACE0\uCE5C\uB2E4.
 
 \uC0AC\uC6A9\uBC95
   lasso <\uD3EC\uD2B8>            \uAC1C\uBC1C \uC11C\uBC84(<\uD3EC\uD2B8>) \uC55E\uC5D0 \uD53C\uB4DC\uBC31 \uB3C4\uAD6C\uB97C \uC5B9\uC740 \uC911\uACC4 \uC11C\uBC84\uB97C \uC5F0\uB2E4 (\uAE30\uBCF8 <\uD3EC\uD2B8>+100)
     --listen <\uD3EC\uD2B8>       \uC911\uACC4 \uC11C\uBC84 \uD3EC\uD2B8\uB97C \uC9C1\uC811 \uC815\uD55C\uB2E4
+  lasso start <\uD3EC\uD2B8>      \uC911\uACC4 \uC11C\uBC84\uB97C \uBC31\uADF8\uB77C\uC6B4\uB4DC\uB85C \uB744\uC6B0\uACE0 \uBC14\uB85C \uB05D\uB09C\uB2E4 (\uB85C\uADF8\xB7pid \uB294 \uC218\uC2E0\uD568 \uD3F4\uB354)
+  lasso stop              start \uB85C \uB744\uC6B4 \uC911\uACC4 \uC11C\uBC84\uB97C \uB0B4\uB9B0\uB2E4
   lasso watch             \uC544\uC9C1 \uC548 \uB118\uAE34 \uD53C\uB4DC\uBC31\uBD80\uD130 \uD55C \uAC74\uC529 \uCD9C\uB825\uD558\uACE0 \uC0C8 \uD53C\uB4DC\uBC31\uC744 \uAE30\uB2E4\uB9B0\uB2E4
+  lasso next              \uC548 \uB118\uAE34 \uD53C\uB4DC\uBC31\uC774 \uC788\uC73C\uBA74 \uCD9C\uB825\uD558\uACE0, \uC5C6\uC73C\uBA74 \uC62C \uB54C\uAE4C\uC9C0 \uAE30\uB2E4\uB838\uB2E4 \uB05D\uB09C\uB2E4
+    --timeout <\uCD08>        \uC774\uB9CC\uD07C \uAE30\uB2E4\uB824\uB3C4 \uC5C6\uC73C\uBA74 \uB05D\uB0B8\uB2E4 (\uAE30\uBCF8 100)
   lasso idle              \uB9C8\uC9C0\uB9C9 \uD65C\uB3D9(\uD654\uBA74 \uC5F4\uAE30\xB7\uD53C\uB4DC\uBC31) \uB4A4 \uBA87 \uBD84 \uC9C0\uB0AC\uB294\uC9C0 \uCD9C\uB825\uD55C\uB2E4
   lasso wait              \uC0AC\uC6A9\uC790\uAC00 \uB3CC\uC544\uC62C \uB54C(\uD654\uBA74\uC744 \uC5F4\uAC70\uB098 \uD53C\uB4DC\uBC31\uC744 \uBCF4\uB0BC \uB54C)\uAE4C\uC9C0 \uAE30\uB2E4\uB838\uB2E4 \uB05D\uB09C\uB2E4
   lasso path              \uC774 \uD504\uB85C\uC81D\uD2B8\uC758 \uC218\uC2E0\uD568 \uD3F4\uB354\uB97C \uCD9C\uB825\uD55C\uB2E4
@@ -247,6 +252,7 @@ var { values, positionals } = parseArgs({
     listen: { type: "string" },
     dir: { type: "string" },
     project: { type: "string" },
+    timeout: { type: "string" },
     help: { type: "boolean", short: "h" }
   }
 });
@@ -259,6 +265,50 @@ async function watch() {
   };
   await tick();
   setInterval(() => void tick().catch((error) => console.error(error)), 700);
+}
+async function next() {
+  const deadline = Date.now() + (Number(values.timeout) || 100) * 1e3;
+  for (; ; ) {
+    const entries = await inbox.takeUnread();
+    if (entries.length) {
+      for (const entry of entries) process.stdout.write(`${formatEntry(entry)}
+`);
+      return;
+    }
+    if (Date.now() >= deadline) break;
+    await new Promise((r) => setTimeout(r, 700));
+  }
+  const last = await inbox.lastActivity();
+  const minutes = last === null ? 0 : Math.floor((Date.now() - last) / 6e4);
+  console.log(`\uC0C8 \uD53C\uB4DC\uBC31 \uC5C6\uC74C \xB7 \uB9C8\uC9C0\uB9C9 \uD65C\uB3D9 ${minutes}\uBD84 \uC804`);
+}
+var pidFile = path2.join(inbox.dir, "proxy.pid");
+function start(target) {
+  mkdirSync(inbox.dir, { recursive: true });
+  const log = openSync(path2.join(inbox.dir, "proxy.log"), "a");
+  const args = [fileURLToPath(import.meta.url), target, "--dir", inbox.dir];
+  if (values.listen) args.push("--listen", values.listen);
+  const child = spawn(process.execPath, args, { detached: true, stdio: ["ignore", log, log] });
+  child.unref();
+  writeFileSync(pidFile, String(child.pid));
+  const listen = values.listen ? Number(values.listen) : Number(target) + 100;
+  console.log(`Lasso \uC911\uACC4 \uC11C\uBC84: http://localhost:${listen}  (\uC6D0\uB798 \uC11C\uBC84 http://localhost:${target})`);
+  console.log(`\uB85C\uADF8: ${path2.join(inbox.dir, "proxy.log")}`);
+}
+function stop() {
+  let pid;
+  try {
+    pid = Number(readFileSync2(pidFile, "utf8"));
+  } catch {
+    return void console.log("start \uB85C \uB744\uC6B4 \uC911\uACC4 \uC11C\uBC84\uAC00 \uC5C6\uB2E4");
+  }
+  try {
+    process.kill(pid);
+    console.log(`\uC911\uACC4 \uC11C\uBC84\uB97C \uB0B4\uB838\uB2E4 (pid ${pid})`);
+  } catch {
+    console.log("\uC911\uACC4 \uC11C\uBC84\uAC00 \uC774\uBBF8 \uAEBC\uC838 \uC788\uB2E4");
+  }
+  rmSync(pidFile, { force: true });
 }
 async function idle() {
   const last = await inbox.lastActivity();
@@ -292,6 +342,12 @@ if (values.help || !command || command === "help") {
   await wait();
 } else if (command === "watch") {
   await watch();
+} else if (command === "next") {
+  await next();
+} else if (command === "start" && /^\d+$/.test(positionals[1] ?? "")) {
+  start(positionals[1]);
+} else if (command === "stop") {
+  stop();
 } else if (/^\d+$/.test(command)) {
   await proxy(Number(command));
 } else {

@@ -8,8 +8,10 @@ interface FeedbackOverlayProps {
     /** 둘러보기 중에는 마커가 앱 클릭을 가로막지 않도록 비활성화한다 */
     browsing?: boolean;
     onSaveDraft: (comment: string) => void;
+    draftText: string;
+    onDraftTextChange: (text: string) => void;
     onCancelDraft: () => void;
 }
-declare function FeedbackOverlayImpl({ items, draft, markers, browsing, onSaveDraft, onCancelDraft, }: FeedbackOverlayProps): import("react").JSX.Element;
+declare function FeedbackOverlayImpl({ items, draft, markers, browsing, onSaveDraft, onCancelDraft, draftText, onDraftTextChange, }: FeedbackOverlayProps): import("react").JSX.Element;
 export declare const FeedbackOverlay: import("react").MemoExoticComponent<typeof FeedbackOverlayImpl>;
 export {};

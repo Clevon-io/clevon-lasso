@@ -14,6 +14,8 @@ interface FeedbackOverlayProps {
   /** 둘러보기 중에는 마커가 앱 클릭을 가로막지 않도록 비활성화한다 */
   browsing?: boolean
   onSaveDraft: (comment: string) => void
+  draftText: string
+  onDraftTextChange: (text: string) => void
   onCancelDraft: () => void
 }
 
@@ -73,6 +75,8 @@ function FeedbackOverlayImpl({
   browsing,
   onSaveDraft,
   onCancelDraft,
+  draftText,
+  onDraftTextChange,
 }: FeedbackOverlayProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const hovered = browsing
@@ -126,6 +130,8 @@ function FeedbackOverlayImpl({
             key="draft-popover"
             store={markers}
             point={draft.point}
+            initialText={draftText}
+            onTextChange={onDraftTextChange}
             onSave={onSaveDraft}
             onCancel={onCancelDraft}
           />
@@ -369,15 +375,19 @@ function targetLabel(item: FeedbackItem): string {
 function DraftPopover({
   store,
   point,
+  initialText,
+  onTextChange,
   onSave,
   onCancel,
 }: {
   store: MarkerStore
   point: Point
+  initialText: string
+  onTextChange: (text: string) => void
   onSave: (comment: string) => void
   onCancel: () => void
 }) {
-  const [comment, setComment] = useState('')
+  const [comment, setComment] = useState(initialText)
   const ref = useRef<HTMLDivElement>(null)
   const box = useBoxSize(ref, null)
 
@@ -416,7 +426,10 @@ function DraftPopover({
     >
       <textarea
         value={comment}
-        onChange={(e) => setComment(e.target.value)}
+        onChange={(e) => {
+          setComment(e.target.value)
+          onTextChange(e.target.value)
+        }}
         onKeyDown={handleKeyDown}
         placeholder={'이 부분에 대한 피드백을 적어주세요…'}
         rows={3}

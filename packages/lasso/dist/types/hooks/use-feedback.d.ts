@@ -25,6 +25,8 @@ interface InspectorApi {
 export declare function useFeedback(inspector: InspectorApi): {
     items: FeedbackItem[];
     draft: FeedbackDraft | null;
+    draftText: string;
+    setDraftText: (text: string) => void;
     markers: MarkerStore;
     beginElementDraft: (meta: ElementMeta, point?: Point) => void;
     beginRegionDraft: (region: RegionSelection) => void;

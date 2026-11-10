@@ -1,41 +1,71 @@
 # Clevon Lasso
 
-보고 있는 웹 화면에서 요소를 찍거나 영역을 끌어 코멘트를 남기면, Claude Code 세션이 바로 받아 고친다.
+보고 있는 웹 화면에서 요소를 찍거나 영역을 끌어 코멘트를 남기면, 코딩 에이전트 세션(Claude Code·Codex·OpenCode)이 바로 받아 고친다.
 Clevon Lander 의 시각 피드백 도구를 떼어 내 어느 프로젝트에서나 쓰게 만든 것이다.
 
 두 가지로 쓴다.
 
-- **Claude Code 플러그인** — 개발 중인 프로젝트에 아무것도 설치하지 않고 피드백을 주고받는다.
+- **에이전트 스킬** — 개발 중인 프로젝트에 아무것도 설치하지 않고 피드백을 주고받는다.
 - **라이브러리 `@clevon/lasso`** — Share 같은 서비스가 자기 화면에 피드백 도구를 붙이고, 받은 피드백을 직접 처리한다.
 
-## 플러그인
+## 스킬
+
+Node 20 이상이 필요하다.
 
 ### 설치
+
+**Claude Code**
 
 ```bash
 claude plugin marketplace add Clevon-io/clevon-lasso
 claude plugin install lasso@clevon-lasso
 ```
 
-Claude Code 를 다시 시작하면 `/lasso` 가 잡힌다. 조건은 clevon-skills 와 같다(`Clevon-io` 조직 멤버, git 이 private 저장소를 clone 할 수 있을 것). Node 20 이상이 필요하다.
+**Codex** — 같은 마켓플레이스를 그대로 읽는다.
+
+```bash
+codex plugin marketplace add Clevon-io/clevon-lasso
+codex plugin add lasso@clevon-lasso
+```
+
+**OpenCode** — 저장소를 받아 스킬 폴더를 OpenCode 가 읽는 자리에 연결한다.
+
+```bash
+git clone https://github.com/Clevon-io/clevon-lasso ~/.local/share/clevon-lasso
+mkdir -p ~/.config/opencode/skills
+ln -s ~/.local/share/clevon-lasso/plugins/lasso/skills/lasso ~/.config/opencode/skills/lasso
+```
+
+설치 뒤 에이전트를 다시 시작하면 `lasso` 스킬이 잡힌다.
 
 ### 쓰기
 
-프로젝트 폴더에서 Claude Code 에 `/lasso 3000` 처럼 개발 서버 포트를 알려 준다.
+프로젝트 폴더에서 에이전트에게 "lasso 켜줘, 포트 3000" 처럼 개발 서버 포트를 알려 준다(Claude Code 는 `/lasso 3000`).
 
 1. 세션이 `localhost:3100` 에 중계 서버를 띄운다. 원래 화면 그대로에 피드백 도구만 얹혀 있고, 코드를 고치면 원래처럼 바로 반영된다.
 2. 그 주소에서 요소를 누르거나 끌어 코멘트를 남기고 [N건 보내기]를 누른다. Space 로 둘러보기와 전환한다.
+   보내기 전 코멘트와 쓰던 글은 탭에 저장되어, 에이전트가 고치는 사이 페이지가 새로 고쳐져도 남는다.
 3. 세션이 피드백을 받아 고치고 보고한다.
+
+Claude Code 는 백그라운드 감시로 피드백을 바로 받는다. Codex·OpenCode 는 백그라운드 알림이 없어 세션이 `lasso next` 로 다음 피드백을 기다리기를 되풀이한다. Codex 는 기본 샌드박스가 포트 열기와 홈 폴더 쓰기를 막으므로, 처음 한 번 `node …/lasso.mjs` 실행 권한을 허용해야 한다.
 
 "잠깐 쉬어"라고 하면 받기만 멈추고, 그동안 보낸 피드백은 다시 켤 때 먼저 처리한다. "꺼줘"라고 하면 중계 서버까지 내린다.
 
 ### 업데이트·삭제
 
 ```bash
+# Claude Code
 claude plugin marketplace update clevon-lasso
 claude plugin update lasso@clevon-lasso
-
 claude plugin uninstall lasso@clevon-lasso
+
+# Codex
+codex plugin marketplace upgrade clevon-lasso
+codex plugin remove lasso@clevon-lasso
+
+# OpenCode
+git -C ~/.local/share/clevon-lasso pull
+rm ~/.config/opencode/skills/lasso
 ```
 
 프로젝트에는 남는 파일이 없다. 받은 피드백과 스크린샷은 `~/.clevon-lasso/` 아래 프로젝트별 폴더에 쌓이며, 필요 없으면 그 폴더를 지우면 된다.
@@ -82,5 +112,5 @@ pnpm check-types
 | `packages/lasso/src/ui`, `hooks` | 피드백 UI (Lander 와 같은 화면) |
 | `packages/lasso/src/index.tsx` | `mountLasso` — Shadow DOM 에 UI 를 붙인다 |
 | `packages/lasso/src/server` | 수신함, 중계 서버(HTML 에 도구 스크립트 주입, WebSocket 통과) |
-| `packages/lasso/src/cli.ts` | `lasso <포트>`, `lasso watch`, `lasso idle`, `lasso wait`, `lasso path` |
-| `plugins/lasso` | Claude Code 플러그인 |
+| `packages/lasso/src/cli.ts` | `lasso <포트>`, `start`·`stop`, `watch`, `next`, `idle`, `wait`, `path` |
+| `plugins/lasso` | 플러그인·스킬 (Claude Code·Codex 마켓플레이스, OpenCode 는 스킬 폴더 연결) |

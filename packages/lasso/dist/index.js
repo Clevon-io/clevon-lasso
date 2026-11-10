@@ -90,6 +90,42 @@ var MarkerStore = class {
   }
 };
 
+// src/core/pending-store.ts
+var ITEMS_KEY = "clevon-lasso:items";
+var DRAFT_KEY2 = "clevon-lasso:draft";
+function read(key) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+function write(key, value) {
+  try {
+    if (value == null) sessionStorage.removeItem(key);
+    else sessionStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch {
+    return false;
+  }
+}
+function loadItems() {
+  const items = read(ITEMS_KEY);
+  return Array.isArray(items) ? items.map((item) => ({ ...item, stale: false })) : [];
+}
+function saveItems(items) {
+  if (items.length === 0) return void write(ITEMS_KEY, null);
+  if (!write(ITEMS_KEY, items)) write(ITEMS_KEY, items.map((item) => ({ ...item, screenshot: null })));
+}
+function loadDraft() {
+  const saved = read(DRAFT_KEY2);
+  return saved?.draft ? saved : null;
+}
+function saveDraft(saved) {
+  write(DRAFT_KEY2, saved);
+}
+
 // src/hooks/use-feedback.ts
 function trackingAnchor(target) {
   if (target.kind === "element") {
@@ -106,14 +142,29 @@ function place(source, anchor) {
   };
 }
 function useFeedback(inspector) {
-  const [items, setItems] = useState([]);
-  const [draft, setDraft] = useState(null);
-  const [markers] = useState(() => new MarkerStore());
+  const [restored] = useState(() => ({ items: loadItems(), draft: loadDraft() }));
+  const [items, setItems] = useState(restored.items);
+  const [draft, setDraft] = useState(restored.draft?.draft ?? null);
+  const [markers] = useState(() => {
+    const store = new MarkerStore();
+    for (const item of restored.items) store.write(item.id, { pin: item.pin, rect: item.rect });
+    const saved = restored.draft?.draft;
+    if (saved) store.write(DRAFT_KEY, { pin: saved.point, rect: saved.rect });
+    return store;
+  });
+  const draftTextRef = useRef(restored.draft?.text ?? "");
   const itemsRef = useRef(items);
   itemsRef.current = items;
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const { connected, track, capture } = inspector;
+  useEffect(() => saveItems(items), [items]);
+  useEffect(() => saveDraft(draft ? { draft, text: draftTextRef.current } : null), [draft]);
+  const setDraftText = useCallback((text) => {
+    draftTextRef.current = text;
+    const current = draftRef.current;
+    if (current) saveDraft({ draft: current, text });
+  }, []);
   const trackedNodes = useMemo(() => {
     const nodes = /* @__PURE__ */ new Map();
     for (const item of items) {
@@ -135,6 +186,7 @@ function useFeedback(inspector) {
     (meta, point) => {
       const p = point ?? { x: meta.rect.x + meta.rect.width, y: meta.rect.y };
       markers.write(DRAFT_KEY, { pin: p, rect: null });
+      draftTextRef.current = "";
       setDraft({
         target: { kind: "element", meta },
         point: p,
@@ -156,6 +208,7 @@ function useFeedback(inspector) {
       const point = region.point ?? { x: region.rect.x + region.rect.width, y: region.rect.y };
       const anchor = trackingAnchor(target);
       markers.write(DRAFT_KEY, { pin: point, rect: region.rect });
+      draftTextRef.current = "";
       setDraft({
         target,
         point,
@@ -170,7 +223,7 @@ function useFeedback(inspector) {
     markers.forget(DRAFT_KEY);
     setDraft(null);
   }, [markers]);
-  const saveDraft = useCallback(
+  const saveDraft2 = useCallback(
     (comment) => {
       const current = draftRef.current;
       const trimmed = comment.trim();
@@ -269,11 +322,13 @@ function useFeedback(inspector) {
   return {
     items,
     draft,
+    draftText: draftTextRef.current,
+    setDraftText,
     markers,
     beginElementDraft,
     beginRegionDraft,
     cancelDraft,
-    saveDraft,
+    saveDraft: saveDraft2,
     removeItem,
     updateRects,
     clear,
@@ -839,7 +894,9 @@ function FeedbackOverlayImpl({
   markers,
   browsing,
   onSaveDraft,
-  onCancelDraft
+  onCancelDraft,
+  draftText,
+  onDraftTextChange
 }) {
   const [hoveredId, setHoveredId] = useState3(null);
   const hovered = browsing ? null : items.find((item) => item.id === hoveredId && !item.stale) ?? null;
@@ -881,6 +938,8 @@ function FeedbackOverlayImpl({
       {
         store: markers,
         point: draft.point,
+        initialText: draftText,
+        onTextChange: onDraftTextChange,
         onSave: onSaveDraft,
         onCancel: onCancelDraft
       },
@@ -1066,10 +1125,12 @@ function targetLabel(item) {
 function DraftPopover({
   store,
   point,
+  initialText,
+  onTextChange,
   onSave,
   onCancel
 }) {
-  const [comment, setComment] = useState3("");
+  const [comment, setComment] = useState3(initialText);
   const ref = useRef3(null);
   const box = useBoxSize(ref, null);
   usePlacement(store, DRAFT_KEY, { pin: point, rect: null }, (placement) => {
@@ -1107,7 +1168,10 @@ function DraftPopover({
           "textarea",
           {
             value: comment,
-            onChange: (e) => setComment(e.target.value),
+            onChange: (e) => {
+              setComment(e.target.value);
+              onTextChange(e.target.value);
+            },
             onKeyDown: handleKeyDown,
             placeholder: "\uC774 \uBD80\uBD84\uC5D0 \uB300\uD55C \uD53C\uB4DC\uBC31\uC744 \uC801\uC5B4\uC8FC\uC138\uC694\u2026",
             rows: 3,
@@ -1290,7 +1354,9 @@ function LassoApp({ send }) {
         markers: feedback.markers,
         browsing: inspector.browsing,
         onSaveDraft: feedback.saveDraft,
-        onCancelDraft: feedback.cancelDraft
+        onCancelDraft: feedback.cancelDraft,
+        draftText: feedback.draftText,
+        onDraftTextChange: feedback.setDraftText
       }
     ),
     /* @__PURE__ */ jsx4("div", { className: "pointer-events-none fixed inset-0 z-[2147483641] flex flex-col items-center justify-end px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]", children: /* @__PURE__ */ jsx4("div", { className: "w-[min(640px,100%)]", children: /* @__PURE__ */ jsx4(AnimatePresence3, { children: inspector.tool === "feedback" && /* @__PURE__ */ jsx4(
